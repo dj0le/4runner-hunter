@@ -1,0 +1,477 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>4Runner Manual Hunter (1984-2000)</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .header {
+            background: linear-gradient(135deg, #2c3e50, #34495e);
+            color: white;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+        .stat-card {
+            background: white;
+            padding: 15px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            text-align: center;
+        }
+        .stat-number { font-size: 24px; font-weight: bold; color: #2c3e50; }
+        .stat-label { color: #7f8c8d; margin-top: 5px; }
+        .controls {
+            background: white;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .filter-group {
+            display: inline-block;
+            margin-right: 20px;
+        }
+        select, button {
+            padding: 8px 12px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            margin: 5px;
+        }
+        button {
+            background: #3498db;
+            color: white;
+            cursor: pointer;
+            border: none;
+        }
+        button:hover { background: #2980b9; }
+        .refresh-btn { background: #27ae60; }
+        .refresh-btn:hover { background: #229954; }
+        .listings {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+            gap: 20px;
+        }
+        .listing-card {
+            background: white;
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            transition: transform 0.2s;
+            position: relative;
+            cursor: pointer;
+        }
+        .listing-card:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0,0,0,0.15); }
+        .listing-card.seen { opacity: 0.7; }
+        .listing-card.watched { border: 3px solid #f39c12; }
+        .listing-image {
+            width: 100%;
+            height: 200px;
+            background: #ecf0f1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #95a5a6;
+        }
+        .listing-image img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+        .listing-content {
+            padding: 15px;
+        }
+        .listing-title {
+            font-size: 18px;
+            font-weight: bold;
+            color: #2c3e50;
+            margin-bottom: 10px;
+        }
+        .listing-details {
+            color: #7f8c8d;
+            line-height: 1.6;
+        }
+        .listing-price {
+            font-size: 20px;
+            font-weight: bold;
+            color: #27ae60;
+            margin-top: 10px;
+        }
+        .badge {
+            display: inline-block;
+            padding: 4px 8px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: bold;
+            margin: 2px;
+        }
+        .badge-manual { background: #e74c3c; color: white; }
+        .badge-first-gen { background: #f39c12; color: white; }
+        .badge-auto { background: #95a5a6; color: white; }
+        .listing-links {
+            margin-top: 10px;
+            padding-top: 10px;
+            border-top: 1px solid #ecf0f1;
+        }
+        .listing-links a {
+            color: #3498db;
+            text-decoration: none;
+            margin-right: 15px;
+            font-size: 14px;
+        }
+        .listing-links a:hover { text-decoration: underline; }
+        .no-results {
+            text-align: center;
+            color: #7f8c8d;
+            font-size: 18px;
+            margin: 40px;
+        }
+        .loading {
+            text-align: center;
+            padding: 20px;
+            color: #7f8c8d;
+        }
+        .card-actions {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            display: flex;
+            gap: 10px;
+            z-index: 10;
+        }
+        .action-btn {
+            background: white;
+            border: 2px solid #ddd;
+            border-radius: 50%;
+            width: 36px;
+            height: 36px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 18px;
+            transition: all 0.2s;
+        }
+        .action-btn:hover { background: #f5f5f5; }
+        .action-btn.watched { 
+            background: #f39c12; 
+            color: white;
+            border-color: #f39c12;
+        }
+        .seen-checkbox {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            z-index: 10;
+        }
+        .image-gallery {
+            position: relative;
+        }
+        .image-nav {
+            position: absolute;
+            top: 50%;
+            transform: translateY(-50%);
+            background: rgba(0,0,0,0.5);
+            color: white;
+            border: none;
+            padding: 10px;
+            cursor: pointer;
+            font-size: 20px;
+        }
+        .image-nav.prev { left: 5px; }
+        .image-nav.next { right: 5px; }
+        .image-counter {
+            position: absolute;
+            bottom: 5px;
+            right: 5px;
+            background: rgba(0,0,0,0.7);
+            color: white;
+            padding: 2px 8px;
+            border-radius: 12px;
+            font-size: 12px;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>🚗 4Runner Manual Hunter</h1>
+        <p>Tracking Manual Transmissions & 1st Gen 4Runners (1984-2002)</p>
+    </div>
+
+    <div class="stats">
+        <div class="stat-card">
+            <div class="stat-number">{{ stats.total_count }}</div>
+            <div class="stat-label">Total 4Runners</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-number">{{ stats.manual_count }}</div>
+            <div class="stat-label">Manual Transmissions</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-number">{{ stats.first_gen_count }}</div>
+            <div class="stat-label">1st Gen (1984-1989)</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-number">{{ stats.second_gen_count }}</div>
+            <div class="stat-label">2nd Gen (1990-1995)</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-number">{{ stats.third_gen_count }}</div>
+            <div class="stat-label">3rd Gen (1996-2002)</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-number">{{ stats.avg_price }}</div>
+            <div class="stat-label">Average Price</div>
+        </div>
+    </div>
+
+    <div class="controls">
+        <div class="filter-group">
+            <label>Filter:</label>
+            <select id="filterSelect" onchange="applyFilters()">
+                <option value="all" {{ 'selected' if current_filter == 'all' }}>All Vehicles</option>
+                <option value="manual" {{ 'selected' if current_filter == 'manual' }}>Manual Only</option>
+                <option value="first_gen" {{ 'selected' if current_filter == 'first_gen' }}>1st Gen Only</option>
+                <option value="auto" {{ 'selected' if current_filter == 'auto' }}>Automatic Only</option>
+                <option value="watched" {{ 'selected' if current_filter == 'watched' }}>Watched Only</option>
+                <option value="gen1" {{ 'selected' if current_filter == 'gen1' }}>Gen 1 (1984-1989)</option>
+                <option value="gen2" {{ 'selected' if current_filter == 'gen2' }}>Gen 2 (1990-1995)</option>
+                <option value="gen3" {{ 'selected' if current_filter == 'gen3' }}>Gen 3 (1996-2002)</option>
+                <option value="under200k" {{ 'selected' if current_filter == 'under200k' }}>Under 200k Miles</option>
+                <option value="3.4l" {{ 'selected' if current_filter == '3.4l' }}>3.4L V6 (5VZ-FE)</option>
+                <option value="within500" {{ 'selected' if current_filter == 'within500' }}>Within 500 Miles</option>
+            </select>
+        </div>
+        <div class="filter-group">
+            <label>Sort:</label>
+            <select id="sortSelect" onchange="applyFilters()">
+                <option value="price" {{ 'selected' if current_sort == 'price' }}>Price (Low to High)</option>
+                <option value="year" {{ 'selected' if current_sort == 'year' }}>Year</option>
+                <option value="mileage" {{ 'selected' if current_sort == 'mileage' }}>Mileage</option>
+                <option value="days" {{ 'selected' if current_sort == 'days' }}>Recently Added</option>
+                <option value="distance" {{ 'selected' if current_sort == 'distance' }}>Distance</option>
+            </select>
+        </div>
+        <button class="refresh-btn" onclick="refreshListings()">🔄 Refresh Search</button>
+        <span id="listingCount">{{ listing_count }} vehicles shown</span>
+    </div>
+
+    {% if listings %}
+    <div class="listings">
+        {% for listing in listings %}
+        <div class="listing-card {{ 'seen' if listing.is_seen }} {{ 'watched' if listing.is_watched }}" data-vin="{{ listing.vin }}">
+            <div class="card-actions">
+                <button class="action-btn {{ 'watched' if listing.is_watched }}" onclick="toggleWatch('{{ listing.vin }}', this)" title="Toggle Watch">
+                    ⭐
+                </button>
+            </div>
+            <div class="seen-checkbox">
+                <input type="checkbox" id="seen-{{ listing.vin }}" {{ 'checked' if listing.is_seen }} onchange="markSeen('{{ listing.vin }}', this)" title="Mark as seen">
+            </div>
+            <div class="listing-image image-gallery" data-images='{{ listing.all_photos | tojson }}' data-current="0">
+                {% if listing.primary_photo %}
+                    <img src="{{ listing.primary_photo }}" alt="{{ listing.year }} 4Runner" onerror="this.style.display='none'">
+                    {% if listing.all_photos and listing.all_photos|length > 1 %}
+                        <button class="image-nav prev" onclick="navigateImage(this, -1)">‹</button>
+                        <button class="image-nav next" onclick="navigateImage(this, 1)">›</button>
+                        <span class="image-counter">1 / {{ listing.all_photos|length }}</span>
+                    {% endif %}
+                {% else %}
+                    📷 No Photo Available
+                {% endif %}
+            </div>
+            <div class="listing-content">
+                <div class="listing-title">
+                    {{ listing.year }} Toyota 4Runner
+                    {% if listing.is_first_gen %}
+                        <span class="badge badge-first-gen">1st Gen</span>
+                    {% elif listing.is_manual %}
+                        <span class="badge badge-manual">Manual</span>
+                    {% else %}
+                        <span class="badge badge-auto">Auto</span>
+                    {% endif %}
+                </div>
+
+                <div class="listing-details">
+                    <strong>VIN:</strong> {{ listing.vin }}<br>
+                    <strong>Location:</strong> {{ listing.location }}<br>
+                    <strong>Dealer:</strong> {{ listing.dealer_name }}<br>
+                    <strong>Mileage:</strong> {{ listing.mileage_formatted }}<br>
+                    <strong>Transmission:</strong> {{ listing.transmission_type }}<br>
+                    <strong>Engine:</strong> {{ listing.engine_info }}<br>
+                    {% if listing.trim != 'Unknown' %}
+                    <strong>Trim:</strong> {{ listing.trim }}<br>
+                    {% endif %}
+                    {% if listing.exterior_color != 'Unknown' %}
+                    <strong>Color:</strong> {{ listing.exterior_color }}<br>
+                    {% endif %}
+                    {% if listing.days_on_market > 0 %}
+                    <strong>Days Listed:</strong> {{ listing.days_on_market }}<br>
+                    {% endif %}
+                    {% if listing.distance_from_origin %}
+                    <strong>Distance:</strong> {{ listing.distance_from_origin }} miles<br>
+                    {% endif %}
+                    {% if listing.vin_pattern_confidence > 0 %}
+                    <strong>Confidence:</strong> {{ listing.vin_pattern_confidence }}%<br>
+                    {% endif %}
+                </div>
+
+                <div class="listing-price">{{ listing.price_formatted }}</div>
+
+                <div class="listing-links">
+                    {% if listing.dealer_url %}
+                    <a href="{{ listing.dealer_url }}" target="_blank">Contact Dealer</a>
+                    {% endif %}
+                    {% if listing.dealer_search_url %}
+                    <a href="{{ listing.dealer_search_url }}" target="_blank">🔍 Dealer Site</a>
+                    {% endif %}
+                    <a href="/vehicle/{{ listing.vin }}">More Info</a>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    {% else %}
+    <div class="no-results">
+        <h3>No 4Runners found matching your criteria</h3>
+        <p>Try adjusting your filters or running a new search</p>
+    </div>
+    {% endif %}
+
+    <script>
+        function applyFilters() {
+            const filter = document.getElementById('filterSelect').value;
+            const sort = document.getElementById('sortSelect').value;
+            window.location.href = `/?filter=${filter}&sort=${sort}`;
+        }
+
+        function refreshListings() {
+            const button = document.querySelector('.refresh-btn');
+            button.innerHTML = '⏳ Searching...';
+            button.disabled = true;
+
+            fetch('/refresh')
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        alert(data.message);
+                        window.location.reload();
+                    } else {
+                        alert('Search failed: ' + data.message);
+                    }
+                })
+                .catch(error => {
+                    alert('Search failed: ' + error.message);
+                })
+                .finally(() => {
+                    button.innerHTML = '🔄 Refresh Search';
+                    button.disabled = false;
+                });
+        }
+
+        // Auto-refresh every 5 minutes
+        setInterval(() => {
+            console.log('Auto-refreshing page...');
+            window.location.reload();
+        }, 5 * 60 * 1000);
+        
+        function markSeen(vin, checkbox) {
+            fetch(`/api/mark-seen/${vin}`, { method: 'POST' })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        const card = document.querySelector(`[data-vin="${vin}"]`);
+                        if (checkbox.checked) {
+                            card.classList.add('seen');
+                        } else {
+                            card.classList.remove('seen');
+                        }
+                    } else {
+                        alert('Failed to update seen status');
+                        checkbox.checked = !checkbox.checked;
+                    }
+                })
+                .catch(error => {
+                    alert('Error: ' + error.message);
+                    checkbox.checked = !checkbox.checked;
+                });
+        }
+        
+        function toggleWatch(vin, button) {
+            fetch(`/api/toggle-watch/${vin}`, { method: 'POST' })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        const card = document.querySelector(`[data-vin="${vin}"]`);
+                        if (data.is_watched) {
+                            button.classList.add('watched');
+                            card.classList.add('watched');
+                        } else {
+                            button.classList.remove('watched');
+                            card.classList.remove('watched');
+                        }
+                    } else {
+                        alert('Failed to update watch status');
+                    }
+                })
+                .catch(error => {
+                    alert('Error: ' + error.message);
+                });
+        }
+        
+        function navigateImage(button, direction) {
+            const gallery = button.closest('.image-gallery');
+            const images = JSON.parse(gallery.dataset.images);
+            let current = parseInt(gallery.dataset.current);
+            
+            current += direction;
+            if (current < 0) current = images.length - 1;
+            if (current >= images.length) current = 0;
+            
+            gallery.dataset.current = current;
+            const img = gallery.querySelector('img');
+            let imageUrl = images[current];
+            if (!imageUrl.startsWith('http')) {
+                imageUrl = 'https:' + imageUrl;
+            }
+            img.src = imageUrl;
+            
+            const counter = gallery.querySelector('.image-counter');
+            if (counter) {
+                counter.textContent = `${current + 1} / ${images.length}`;
+            }
+        }
+        
+        // Make entire card clickable
+        document.addEventListener('DOMContentLoaded', function() {
+            const cards = document.querySelectorAll('.listing-card');
+            cards.forEach(card => {
+                card.addEventListener('click', function(e) {
+                    // Don't navigate if clicking on action buttons, links, or checkboxes
+                    if (e.target.closest('.card-actions') || 
+                        e.target.closest('.listing-links') || 
+                        e.target.closest('.seen-checkbox') ||
+                        e.target.closest('.image-nav')) {
+                        return;
+                    }
+                    const vin = this.dataset.vin;
+                    window.location.href = `/vehicle/${vin}`;
+                });
+            });
+        });
+    </script>
+</body>
+</html>
