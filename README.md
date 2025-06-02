@@ -25,7 +25,7 @@ A streamlined Python application that tracks all Toyota 4Runners (1984-2002) fro
 
 1. **Clone the repository**:
    ```bash
-   git clone https://github.com/yourusername/4runner-hunter.git
+   git clone https://github.com/dj0le/4runner-hunter.git
    cd 4runner-hunter
    ```
 
@@ -167,7 +167,7 @@ python tests/test_full_run.py
 python tests/test_vin_anal.py
 ```
 
-### Code Structure (Simplified to 14 Python files)
+### Code Structure
 
 - `main.py`: Core search logic
 - `web_app.py`: Flask dashboard with auto-initialization
