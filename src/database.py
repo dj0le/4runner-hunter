@@ -65,7 +65,13 @@ class Database:
                     interior_color TEXT,
                     distance_from_origin INTEGER,
                     created_at DATETIME,
-                    color_options TEXT
+                    color_options TEXT,
+                    
+                    -- Craigslist specific fields
+                    listing_source TEXT DEFAULT 'auto.dev',
+                    craigslist_url TEXT,
+                    craigslist_region TEXT,
+                    craigslist_id TEXT
                 )
             """)
 
@@ -95,6 +101,8 @@ class Database:
             cursor.execute("CREATE INDEX IF NOT EXISTS idx_needs_research ON listings(needs_research)")
             cursor.execute("CREATE INDEX IF NOT EXISTS idx_year ON listings(year)")
             cursor.execute("CREATE INDEX IF NOT EXISTS idx_is_first_gen ON listings(is_first_gen)")
+            cursor.execute("CREATE INDEX IF NOT EXISTS idx_listing_source ON listings(listing_source)")
+            cursor.execute("CREATE INDEX IF NOT EXISTS idx_craigslist_id ON listings(craigslist_id)")
 
             conn.commit()
 
@@ -137,6 +145,18 @@ class Database:
             
         if 'color_options' not in existing_columns:
             cursor.execute("ALTER TABLE listings ADD COLUMN color_options TEXT")
+            
+        if 'listing_source' not in existing_columns:
+            cursor.execute("ALTER TABLE listings ADD COLUMN listing_source TEXT DEFAULT 'auto.dev'")
+            
+        if 'craigslist_url' not in existing_columns:
+            cursor.execute("ALTER TABLE listings ADD COLUMN craigslist_url TEXT")
+            
+        if 'craigslist_region' not in existing_columns:
+            cursor.execute("ALTER TABLE listings ADD COLUMN craigslist_region TEXT")
+            
+        if 'craigslist_id' not in existing_columns:
+            cursor.execute("ALTER TABLE listings ADD COLUMN craigslist_id TEXT")
 
     def upsert_listing(self, listing_data: Dict) -> bool:
         """Insert or update a listing. Returns True if new listing."""
@@ -179,7 +199,11 @@ class Database:
                         interior_color = ?,
                         distance_from_origin = ?,
                         created_at = ?,
-                        color_options = ?
+                        color_options = ?,
+                        listing_source = ?,
+                        craigslist_url = ?,
+                        craigslist_region = ?,
+                        craigslist_id = ?
                     WHERE vin = ?
                 """, (
                     listing_data.get('year'),
@@ -209,6 +233,10 @@ class Database:
                     listing_data.get('distance_from_origin'),
                     listing_data.get('created_at'),
                     listing_data.get('color_options'),
+                    listing_data.get('listing_source', 'auto.dev'),
+                    listing_data.get('craigslist_url'),
+                    listing_data.get('craigslist_region'),
+                    listing_data.get('craigslist_id'),
                     listing_data['vin']
                 ))
                 conn.commit()
@@ -223,8 +251,9 @@ class Database:
                         vin_pattern_confidence, vin_analysis_reason, manual_source,
                         needs_research, api_transmission_type, model_code, is_first_gen,
                         raw_listing_data, raw_vin_data, exterior_color, interior_color,
-                        distance_from_origin, created_at, color_options
-                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                        distance_from_origin, created_at, color_options,
+                        listing_source, craigslist_url, craigslist_region, craigslist_id
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """, (
                     listing_data['vin'],
                     listing_data.get('year'),
@@ -254,7 +283,11 @@ class Database:
                     listing_data.get('interior_color'),
                     listing_data.get('distance_from_origin'),
                     listing_data.get('created_at'),
-                    listing_data.get('color_options')
+                    listing_data.get('color_options'),
+                    listing_data.get('listing_source', 'auto.dev'),
+                    listing_data.get('craigslist_url'),
+                    listing_data.get('craigslist_region'),
+                    listing_data.get('craigslist_id')
                 ))
                 conn.commit()
                 return True

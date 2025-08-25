@@ -5,9 +5,12 @@ import sqlite3
 import json
 import logging
 from datetime import datetime
+from pathlib import Path
 from config import DATABASE_PATH
 
-app = Flask(__name__)
+# Set template folder to current directory's templates
+template_dir = Path(__file__).parent / 'templates'
+app = Flask(__name__, template_folder=str(template_dir))
 app.logger.setLevel(logging.INFO)
 
 def get_db_connection():
@@ -188,8 +191,8 @@ def index():
             'vin_pattern_confidence': row['vin_pattern_confidence'] if 'vin_pattern_confidence' in row.keys() else 0,
             'model_code': row['model_code'] if 'model_code' in row.keys() else 'Unknown',
 
-            # URLs - Construct proper auto.dev URL
-            'auto_dev_url': _construct_auto_dev_url(row, listing_data),
+            # URLs
+            'listing_url': _construct_auto_dev_url(row, listing_data),
             'dealer_url': listing_data.get('clickoffUrl', ''),
             'dealer_search_url': dealer_search_url,
 
@@ -297,9 +300,9 @@ def api_listings():
     listings = []
     for row in cursor.fetchall():
         category = "Unknown"
-        if row.get('is_first_gen'):
+        if 'is_first_gen' in row.keys() and row['is_first_gen']:
             category = "1st Gen"
-        elif row.get('is_manual'):
+        elif 'is_manual' in row.keys() and row['is_manual']:
             category = "Manual"
         else:
             category = "Automatic"
@@ -315,7 +318,7 @@ def api_listings():
             'dealer': row['dealer_name'] or 'Unknown',
             'transmission': row['transmission_type'] or 'Unknown',
             'category': category,
-            'confidence': row.get('vin_pattern_confidence', 0),
+            'confidence': row['vin_pattern_confidence'] if 'vin_pattern_confidence' in row.keys() else 0,
             'days_on_market': calculate_days_on_market(row['first_seen']) if row['first_seen'] else 0
         })
 
@@ -359,13 +362,29 @@ def refresh():
         app.logger.info("Starting new 4Runner search...")
 
         hunter = FourRunnerHunter()
-        stats = hunter.search_4runners_vin_focused()  # Updated method name
+        stats = hunter.search_all_sources()  # Search Auto.dev
 
         app.logger.info(f"Search completed: {stats}")
+        
+        # Calculate totals for message
+        total_new = stats.get('total_new_finds', 0)
+        total_manual = stats.get('total_manual_finds', 0)
+        
+        # Build detailed message
+        messages = []
+        if stats.get('auto_dev', {}).get('new_manual_finds', 0) > 0:
+            messages.append(f"{stats['auto_dev']['new_manual_finds']} manual")
+        if stats.get('auto_dev', {}).get('new_first_gen_finds', 0) > 0:
+            messages.append(f"{stats['auto_dev']['new_first_gen_finds']} 1st gen")
+            
+        message = f"Search completed! Found {total_new} new listings"
+        if messages:
+            message += f" ({', '.join(messages)})"
+        
         return jsonify({
             'success': True,
             'stats': stats,
-            'message': f"Search completed! Found {stats.get('new_manual_finds', 0)} new manual transmissions and {stats.get('new_first_gen_finds', 0)} new 1st gen 4Runners."
+            'message': message
         })
 
     except Exception as e:
@@ -407,6 +426,9 @@ def vehicle_detail(vin):
         # Use Google search
         dealer_search_url = f"https://www.google.com/search?q={dealer_name}, {location}"
 
+    # Check listing source
+    listing_source = row['listing_source'] if 'listing_source' in row.keys() else 'auto.dev'
+    
     vehicle = {
         'vin': row['vin'],
         'year': row['year'],
@@ -427,9 +449,13 @@ def vehicle_detail(vin):
         'first_seen': row['first_seen'],
         'last_seen': row['last_seen'],
         'days_on_market': calculate_days_on_market(row['first_seen']) if row['first_seen'] else 0,
-        'photos': listing_data.get('photoUrls', []),
+        'listing_source': listing_source,
+        'photos': listing_data.get('images', []) if listing_source == 'craigslist' else listing_data.get('photoUrls', []),
         'dealer_url': listing_data.get('clickoffUrl'),
-        'auto_dev_url': _construct_auto_dev_url(row, listing_data),
+        'auto_dev_url': _construct_auto_dev_url(row, listing_data) if listing_source == 'auto.dev' else None,
+        'craigslist_url': row['craigslist_url'] if listing_source == 'craigslist' and 'craigslist_url' in row.keys() else None,
+        'craigslist_region': row['craigslist_region'] if listing_source == 'craigslist' and 'craigslist_region' in row.keys() else None,
+        'listing_url': row['craigslist_url'] if listing_source == 'craigslist' and 'craigslist_url' in row.keys() else _construct_auto_dev_url(row, listing_data),
         'vin_decode_data': vin_data,
         'distance_from_origin': row['distance_from_origin'] if 'distance_from_origin' in row.keys() else None,
         'created_at': row['created_at'] if 'created_at' in row.keys() else None,
@@ -437,7 +463,8 @@ def vehicle_detail(vin):
         'exterior_color': row['exterior_color'] if 'exterior_color' in row.keys() else listing_data.get('displayColor'),
         'interior_color': row['interior_color'] if 'interior_color' in row.keys() else listing_data.get('interiorColor'),
         'dealer_search_url': dealer_search_url,
-        'raw_listing_json': json.dumps(listing_data, indent=2) if listing_data else None
+        'raw_listing_json': json.dumps(listing_data, indent=2) if listing_data else None,
+        'description': listing_data.get('description', '') if listing_source == 'craigslist' else ''
     }
 
     conn.close()
@@ -496,13 +523,15 @@ def check_initial_data():
         conn.close()
         
         if result['count'] == 0:
-            print("Database is empty. Running initial search...")
+            print("Database is empty. Running initial search (Auto.dev + Craigslist)...")
             from main import FourRunnerHunter
             hunter = FourRunnerHunter()
-            stats = hunter.search_4runners_vin_focused()
-            print(f"Initial search complete! Found {stats.get('total_listings', 0)} listings.")
-            print(f"  Manual transmissions: {stats.get('confirmed_manuals', 0)}")
-            print(f"  1st Gen (1984-1989): {stats.get('first_gen_collected', 0)}")
+            stats = hunter.search_all_sources()
+            print(f"Initial search complete!")
+            print(f"  Auto.dev: {stats['auto_dev'].get('total_listings', 0)} listings")
+            print(f"  Craigslist: {stats['craigslist'].get('total_listings', 0)} listings")
+            print(f"  Total new finds: {stats.get('total_new_finds', 0)}")
+            print(f"  Total manual finds: {stats.get('total_manual_finds', 0)}")
         else:
             print(f"Database contains {result['count']} listings.")
     except Exception as e:

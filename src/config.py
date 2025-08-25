@@ -1,14 +1,18 @@
 import os
 from dotenv import load_dotenv
+from pathlib import Path
 
-load_dotenv()
+# Load .env from parent directory (project root)
+env_path = Path(__file__).parent.parent / '.env'
+load_dotenv(env_path)
 
 # API Configuration
 API_KEY = os.getenv("AUTO_DEV_API_KEY", "your_auto_dev_api_key")
 API_BASE_URL = "https://auto.dev/api"
 
-# Database Configuration
-DATABASE_PATH = os.getenv("DATABASE_PATH", "4runner_tracker.db")
+# Database Configuration - store in project root
+PROJECT_ROOT = Path(__file__).parent.parent
+DATABASE_PATH = os.getenv("DATABASE_PATH", str(PROJECT_ROOT / "4runner_tracker.db"))
 
 # Search Configuration
 SEARCH_INTERVAL_MINUTES = int(os.getenv("SEARCH_INTERVAL_MINUTES", "60"))
@@ -37,3 +41,15 @@ API_RATE_LIMIT_REQUESTS = int(os.getenv("API_RATE_LIMIT_REQUESTS", "100"))
 API_RATE_LIMIT_WINDOW_SECONDS = int(os.getenv("API_RATE_LIMIT_WINDOW_SECONDS", "60"))
 API_RETRY_MAX_ATTEMPTS = int(os.getenv("API_RETRY_MAX_ATTEMPTS", "3"))
 API_RETRY_DELAY_SECONDS = int(os.getenv("API_RETRY_DELAY_SECONDS", "5"))
+
+# Vehicle Configuration - User's specific vehicle
+VEHICLE_SPECS = {
+    "make": os.getenv("VEHICLE_MAKE", "Toyota"),
+    "model": os.getenv("VEHICLE_MODEL", "4Runner"),
+    "generation": os.getenv("VEHICLE_GENERATION", "1st"),
+    "series": os.getenv("VEHICLE_SERIES", "N60"),
+    "year": int(os.getenv("VEHICLE_YEAR", "1989")),
+    "engine": os.getenv("VEHICLE_ENGINE", "3.0L 3VZ-E V6"),
+    "transmission": os.getenv("VEHICLE_TRANSMISSION", "5-speed manual"),
+    "drive_type": os.getenv("VEHICLE_DRIVE_TYPE", "4x4")
+}

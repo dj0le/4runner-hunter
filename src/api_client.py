@@ -115,20 +115,32 @@ class AutoDevAPI:
         
         # Add year filter if configured
         from config import TARGET_YEARS, SEARCH_ZIP_CODE, SEARCH_LATITUDE, SEARCH_LONGITUDE
+        
+        # Re-enable year filter but make it optional
         if TARGET_YEARS["min"]:
             params["year_min"] = TARGET_YEARS["min"]
         if TARGET_YEARS["max"]:
             params["year_max"] = TARGET_YEARS["max"]
             
-        # Add location parameters for distance calculation
+        # Add location parameters for distance calculation if configured
+        # Note: This may limit results significantly
         if SEARCH_ZIP_CODE:
             params["zip"] = SEARCH_ZIP_CODE
         elif SEARCH_LATITUDE and SEARCH_LONGITUDE:
             params["lat"] = float(SEARCH_LATITUDE)
             params["lon"] = float(SEARCH_LONGITUDE)
         
-        logger.info(f"Fetching 4Runner listings page {page}...")
-        return self._make_request("GET", "/listings", params=params)
+        logger.info(f"Fetching 4Runner listings page {page} with params: {params}")
+        result = self._make_request("GET", "/listings", params=params)
+        if result:
+            logger.info(f"API Response keys: {list(result.keys()) if result else 'None'}")
+            logger.info(f"Total count in response: {result.get('totalCount', 'Not found')}")
+            # Log first few records if any
+            records = result.get('records', [])
+            if records:
+                logger.info(f"Found {len(records)} records on this page")
+                logger.info(f"First record: Year={records[0].get('year')}, VIN={records[0].get('vin')}")
+        return result
     
     def get_all_4runner_listings(self) -> List[Dict]:
         """Get all Toyota 4Runner listings, handling pagination."""

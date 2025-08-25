@@ -267,6 +267,23 @@ class FourRunnerHunter:
                 vehicle_info["manual_source"] = "VIN_DECODE_FAILED"
 
         return vehicle_info
+    
+    def search_all_sources(self) -> Dict:
+        """Search Auto.dev API for 4Runners."""
+        logger.info("Starting Auto.dev search...")
+        
+        # Just run the Auto.dev search
+        stats = self.search_4runners_vin_focused()
+        
+        # Format stats for backward compatibility
+        combined_stats = {
+            "auto_dev": stats,
+            "total_new_finds": stats.get("new_manual_finds", 0) + stats.get("new_first_gen_finds", 0),
+            "total_manual_finds": stats.get("new_manual_finds", 0)
+        }
+        
+        logger.info(f"Search completed: {combined_stats}")
+        return combined_stats
 
     def parse_price(self, price_str) -> int:
         """Parse price string to integer"""
@@ -302,12 +319,13 @@ if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
     hunter = FourRunnerHunter()
-    stats = hunter.search_4runners_vin_focused()
-
-    logger.info(f"Search complete!")
-    logger.info(f"Total listings: {stats['total_listings']}")
-    logger.info(f"Filtered out (2001+): {stats['filtered_out_modern']}")
-    logger.info(f"1st Gen collected: {stats['first_gen_collected']}")
-    logger.info(f"Manual candidates: {stats['manual_candidates']}")
-    logger.info(f"New finds: {stats['new_manual_finds'] + stats['new_first_gen_finds']}")
-    logger.info(f"API calls saved: {stats['api_calls_saved']}")
+    
+    # Add command line argument support
+    import sys
+    if len(sys.argv) > 1 and sys.argv[1] == "--craigslist-only":
+        stats = hunter.search_craigslist_4runners()
+    elif len(sys.argv) > 1 and sys.argv[1] == "--auto-dev-only":
+        stats = hunter.search_4runners_vin_focused()
+    else:
+        # Default: search all sources
+        stats = hunter.search_all_sources()

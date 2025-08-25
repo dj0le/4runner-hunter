@@ -203,6 +203,23 @@
             border-radius: 12px;
             font-size: 12px;
         }
+        .toast {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            padding: 15px 20px;
+            border-radius: 8px;
+            color: white;
+            font-weight: bold;
+            z-index: 1000;
+            animation: slideIn 0.3s ease-out;
+        }
+        .toast.success { background: #27ae60; }
+        .toast.error { background: #e74c3c; }
+        @keyframes slideIn {
+            from { transform: translateX(100%); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+        }
     </style>
 </head>
 <body>
@@ -332,6 +349,9 @@
                 <div class="listing-price">{{ listing.price_formatted }}</div>
 
                 <div class="listing-links">
+                    {% if listing.listing_url %}
+                    <a href="{{ listing.listing_url }}" target="_blank">View on Auto.dev</a>
+                    {% endif %}
                     {% if listing.dealer_url %}
                     <a href="{{ listing.dealer_url }}" target="_blank">Contact Dealer</a>
                     {% endif %}
@@ -352,6 +372,17 @@
     {% endif %}
 
     <script>
+        function showToast(message, type = 'success') {
+            const toast = document.createElement('div');
+            toast.className = `toast ${type}`;
+            toast.textContent = message;
+            document.body.appendChild(toast);
+            
+            setTimeout(() => {
+                toast.remove();
+            }, 4000);
+        }
+
         function applyFilters() {
             const filter = document.getElementById('filterSelect').value;
             const sort = document.getElementById('sortSelect').value;
@@ -367,14 +398,14 @@
                 .then(response => response.json())
                 .then(data => {
                     if (data.success) {
-                        alert(data.message);
-                        window.location.reload();
+                        showToast(data.message, 'success');
+                        setTimeout(() => window.location.reload(), 1500);
                     } else {
-                        alert('Search failed: ' + data.message);
+                        showToast('Search failed: ' + data.message, 'error');
                     }
                 })
                 .catch(error => {
-                    alert('Search failed: ' + error.message);
+                    showToast('Search failed: ' + error.message, 'error');
                 })
                 .finally(() => {
                     button.innerHTML = '🔄 Refresh Search';

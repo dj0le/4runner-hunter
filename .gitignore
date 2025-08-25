@@ -8,7 +8,6 @@ env/
 venv/
 ENV/
 .venv
-/docs
 .claude
 
 # Database
@@ -34,7 +33,23 @@ ENV/
 .DS_Store
 Thumbs.db
 
-# Project specific
+# Project specific - exclude personal data and generated content
 4runner_tracker.db
 4runner_hunter.log
 4runner_hunter_scheduler.log
+
+# Generated directories with personal data
+chroma/
+4runner_mechanic_db/
+reports/
+extracted_pages/
+manual_summaries/
+
+# Personal manual collection (users should add their own)
+manuals/
+
+# Generated text files
+*.txt
+
+# Temporary diagnosis files
+rear_window_diagnosis.txt
